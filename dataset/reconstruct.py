@@ -91,20 +91,27 @@ target_mask_dir = os.path.join(target_dir, 'masks')
 
 
 
-for i in range(7):
-    current_dir = os.path.join(target_image_dir, str(i))
-    img_list = []
-    for root, dirs, files in os.walk(current_dir):
+# for i in range(7):
+#     current_dir = os.path.join(target_image_dir, str(i))
+#     img_list = []
+#     for root, dirs, files in os.walk(current_dir):
+#         for file in files:
+#             if file.endswith('.png'):
+#                 img_list.append(file)
+#         train_len = int(len(img_list)*0.8)
+#         random.shuffle(img_list)
+#         train_files = img_list[:train_len]
+#         test_files = img_list[train_len:]
+#         train_files.sort()
+#         test_files.sort()
+#         with open(os.path.join(current_dir, 'train.json'), 'w') as f:
+#             json.dump(train_files, f)
+#         with open(os.path.join(current_dir, 'test.json'), 'w') as f:
+#             json.dump(test_files, f)
+
+for i in '1234':
+    for root, dirs, files in os.walk(os.path.join(target_image_dir, i)):
         for file in files:
             if file.endswith('.png'):
-                img_list.append(file)
-        train_len = int(len(img_list)*0.8)
-        random.shuffle(img_list)
-        train_files = img_list[:train_len]
-        test_files = img_list[train_len:]
-        train_files.sort()
-        test_files.sort()
-        with open(os.path.join(current_dir, 'train.json'), 'w') as f:
-            json.dump(train_files, f)
-        with open(os.path.join(current_dir, 'test.json'), 'w') as f:
-            json.dump(test_files, f)
+                mask_name = '0'+file[1:]
+                shutil.copy(os.path.join(nudt_mask_dir, mask_name), os.path.join(target_mask_dir, i, file))

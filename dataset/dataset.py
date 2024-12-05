@@ -7,6 +7,7 @@ import json
 import random
 from PIL import ImageOps, ImageFilter
 import numpy as np
+import random
 
 class Split_SIRSTD(Dataset):
     def __init__(self, is_train, task_id):
@@ -77,7 +78,7 @@ class Split_SIRSTD(Dataset):
         return img, mask
 
     def _testval_sync_transform(self, img, mask):
-        base_size = self.base_size
+        base_size = self.basic_size
         img = img.resize((base_size, base_size), Image.BILINEAR)
         mask = mask.resize((base_size, base_size), Image.NEAREST)
 
@@ -104,11 +105,13 @@ class Split_SIRSTD(Dataset):
 class DIL_SIRSTD(Dataset):
     def __init__(self, is_train, task_id):
         self.task = {
-            '0': [0],
-            '1': [1, 2],
-            '2': [3, 4],
-            '3': [5],
-            '4': [6],
+            0: [0],
+            1: [1],
+            2: [2],
+            3: [3],
+            4: [4],
+            5: [5],
+            6: [6],
         }
         self.dataset_list = []
         for i in self.task[task_id]:
@@ -125,12 +128,170 @@ class DIL_SIRSTD(Dataset):
         else:
             return self.dataset_list[1].__getitem__(idx-self.dataset_list[0].__len__())
 
+class DIL_SIRSTD2(Dataset):
+    def __init__(self, is_train, task_id):
+        nuaa_dir = '/mnt/e/Dataset/NUAA-SIRST'
+        nudt_dir = '/mnt/e/Dataset/NUDT-SIRST'
+        irstd_dir = '/mnt/e/Dataset/IRSTD-1k'
+        target_dir = '/mnt/e/Dataset/DIL_SIRSTD'
+
+        nuaa_image_dir = os.path.join(nuaa_dir, 'images/images')
+        nuaa_mask_dir = os.path.join(nuaa_dir, 'masks/masks')
+        nudt_image_dir = os.path.join(nudt_dir, 'images')
+        nudt_mask_dir = os.path.join(nudt_dir, 'masks')
+        irstd_image_dir = os.path.join(irstd_dir, 'IRSTD1k_Img')
+        irstd_mask_dir = os.path.join(irstd_dir, 'IRSTD1k_Label')
+
+        tmp_list = []
+        self.img_list = []
+        self.mask_list = []
+
+        self.is_train = is_train
+        self.task = task_id
+        self.basic_size = 256
+        self.crop_size = 256
+
+        self.transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225]),])
+        self.mask_transforms = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+
+        random.seed(42)
+        for root, dirs, files in os.walk(nudt_image_dir):
+            for file in files:
+                if file.endswith('.png'):
+                    tmp_list.append(file)
+        random.shuffle(tmp_list)
+
+        if task_id == 0:
+            self.img_dir = nuaa_image_dir
+            self.mask_dir = nuaa_mask_dir
+        elif task_id == 1:
+            self.img_dir = nudt_image_dir
+            self.mask_dir = nudt_mask_dir
+        elif task_id == 2:
+            self.img_dir = irstd_image_dir
+            self.mask_dir = irstd_mask_dir
+
+        if is_train:
+            if task_id == 0:
+                txt = os.path.join(nuaa_dir, 'idx_427', 'trainval.txt')
+                with open(txt, 'r') as f:
+                    lines = f.readlines()
+                    self.img_list = [line.strip() + '.png' for line in lines]
+                    self.mask_list = [line.strip() + '_pixels0.png' for line in lines]
+
+            elif task_id == 1:
+                self.img_list = tmp_list[:1061]
+                self.mask_list = self.img_list
+
+            elif task_id == 2:
+                txt = os.path.join(irstd_dir, 'trainval.txt')
+                with open(txt, 'r') as f:
+                    lines = f.readlines()
+                    self.img_list = [line.strip() + '.png' for line in lines]
+                    self.mask_list = self.img_list
+
+        else:
+            if task_id == 0:
+                txt = os.path.join(nuaa_dir, 'idx_427', 'test.txt')
+                with open(txt, 'r') as f:
+                    lines = f.readlines()
+                    self.img_list = [line.strip() + '.png' for line in lines]
+                    self.mask_list = [line.strip() + '_pixels0.png' for line in lines]
+
+            elif task_id == 1:
+                self.img_list = tmp_list[1061:]
+                self.mask_list = self.img_list
+
+            elif task_id == 2:
+                txt = os.path.join(irstd_dir, 'test.txt')
+                with open(txt, 'r') as f:
+                    lines = f.readlines()
+                    self.img_list = [line.strip() + '.png' for line in lines]
+                    self.mask_list = self.img_list
+
+    def _sync_transform(self, img, mask):
+        # random mirror
+        if random.random() < 0.5:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            mask = mask.transpose(Image.FLIP_LEFT_RIGHT)
+        crop_size = self.crop_size
+        # random scale (short edge)
+        long_size = random.randint(int(self.basic_size * 0.5), int(self.basic_size * 2.0))
+        w, h = img.size
+        if h > w:
+            oh = long_size
+            ow = int(1.0 * w * long_size / h + 0.5)
+            short_size = ow
+        else:
+            ow = long_size
+            oh = int(1.0 * h * long_size / w + 0.5)
+            short_size = oh
+        img = img.resize((ow, oh), Image.BILINEAR)
+        mask = mask.resize((ow, oh), Image.NEAREST)
+        # pad crop
+        if short_size < crop_size:
+            padh = crop_size - oh if oh < crop_size else 0
+            padw = crop_size - ow if ow < crop_size else 0
+            img = ImageOps.expand(img, border=(0, 0, padw, padh), fill=0)
+            mask = ImageOps.expand(mask, border=(0, 0, padw, padh), fill=0)
+        # random crop crop_size
+        w, h = img.size
+        x1 = random.randint(0, w - crop_size)
+        y1 = random.randint(0, h - crop_size)
+        img = img.crop((x1, y1, x1 + crop_size, y1 + crop_size))
+        mask = mask.crop((x1, y1, x1 + crop_size, y1 + crop_size))
+        # gaussian blur as in PSP
+        if random.random() < 0.5:
+            img = img.filter(ImageFilter.GaussianBlur(
+                radius=random.random()))
+        return img, mask
+
+    def _testval_sync_transform(self, img, mask):
+        base_size = self.basic_size
+        img = img.resize((base_size, base_size), Image.BILINEAR)
+        mask = mask.resize((base_size, base_size), Image.NEAREST)
+
+        return img, mask
+
+    def __len__(self):
+        return len(self.img_list)
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.img_dir, self.img_list[idx])
+        img = Image.open(img_path).convert('RGB')
+        mask_path = os.path.join(self.mask_dir, self.mask_list[idx])
+        mask = Image.open(mask_path)
+        
+        if self.is_train:
+            img, mask = self._sync_transform(img, mask)
+        else:
+            img, mask = self._testval_sync_transform(img, mask)
+
+        img = self.transforms(img)
+        mask = self.mask_transforms(mask)
+        return img, mask
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
     train_dataset_list = []
     test_dataset_list = []
-    for i, task in enumerate('01234'):
-        train_dataset_list.append(DIL_SIRSTD(is_train=True, task_id=task))
-        test_dataset_list.append(DIL_SIRSTD(is_train=False, task_id=task))
-        print(f'task_id:{i},   train_len:{train_dataset_list[i].__len__()},   test_len:{test_dataset_list[i].__len__()}')
+    # for i, task in enumerate('01234'):
+    #     train_dataset_list.append(DIL_SIRSTD(is_train=True, task_id=task))
+    #     test_dataset_list.append(DIL_SIRSTD(is_train=False, task_id=task))
+    #     print(f'task_id:{i},   train_len:{train_dataset_list[i].__len__()},   test_len:{test_dataset_list[i].__len__()}')
+
+    for i in range(3):
+        train_dataset_list.append(DIL_SIRSTD2(is_train=True, task_id=i))
+        test_dataset_list.append(DIL_SIRSTD2(is_train=False, task_id=i))
+        print(f'task_id: {i}, train_dataset_len: {len(train_dataset_list[i])}, test_dataset_len: {len(test_dataset_list[i])}')

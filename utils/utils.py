@@ -108,8 +108,11 @@ class PD_FA():
         return Final_FA, Final_PD
 
     def reset(self):
-        self.FA = np.zeros([self.bins + 1])
-        self.PD = np.zeros([self.bins + 1])
+        self.image_area_total = []
+        self.image_area_match = []
+        self.FA = np.zeros(self.bins + 1)
+        self.PD = np.zeros(self.bins + 1)
+        self.target = np.zeros(self.bins + 1)
 
 
 class mIoU():

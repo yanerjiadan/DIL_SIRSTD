@@ -98,12 +98,14 @@ class MSHNet(nn.Module):
                                           param_blocks[0])
         self.decoder_0 = self._make_layer(param_channels[0] + param_channels[1], param_channels[0], block)
 
-        self.output_0 = nn.Conv2d(param_channels[0], 1, 1)
-        self.output_1 = nn.Conv2d(param_channels[1], 1, 1)
-        self.output_2 = nn.Conv2d(param_channels[2], 1, 1)
-        self.output_3 = nn.Conv2d(param_channels[3], 1, 1)
+        # self.output_0 = nn.Conv2d(param_channels[0], param_channels[0], 1)
+        self.output_1 = nn.Conv2d(param_channels[1], param_channels[0], 1)
+        self.output_2 = nn.Conv2d(param_channels[2], param_channels[0], 1)
+        self.output_3 = nn.Conv2d(param_channels[3], param_channels[0], 1)
 
-        self.final = nn.Conv2d(4, 1, 3, 1, 1)
+        self.conv_final = self._make_layer(param_channels[0]*4, param_channels[0], block)
+        
+        self.final = nn.Conv2d(param_channels[0], 1, kernel_size=1)
 
     def _make_layer(self, in_channels, out_channels, block, block_num=1):
         layer = []
@@ -124,19 +126,15 @@ class MSHNet(nn.Module):
         x_d2 = self.decoder_2(torch.cat([x_e2, self.up(x_d3)], 1))
         x_d1 = self.decoder_1(torch.cat([x_e1, self.up(x_d2)], 1))
         x_d0 = self.decoder_0(torch.cat([x_e0, self.up(x_d1)], 1))
-
-        if deep_supervision:
-            mask0 = self.output_0(x_d0)
-            mask1 = self.output_1(x_d1)
-            mask2 = self.output_2(x_d2)
-            mask3 = self.output_3(x_d3)
-            output = self.final(torch.cat([mask0, self.up(mask1), self.up_4(mask2), self.up_8(mask3)], dim=1))
-            return [mask0, mask1, mask2, mask3], output
-
-        else:
-            output = self.output_0(x_d0)
-            return [], output
-
+        
+        m3 = self.up_8(self.output_3(x_d3))
+        m2 = self.up_4(self.output_2(x_d2))
+        m1 = self.up(self.output_1(x_d1))
+        m0 = x_d0
+        
+        m_final = self.conv_final(torch.cat([m0, m1, m2, m3], 1))
+        output = self.final(m_final)
+        return output
 
 
 if __name__ == '__main__':
