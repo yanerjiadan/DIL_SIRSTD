@@ -106,10 +106,10 @@ class DIL_SIRSTD(Dataset):
     def __init__(self, is_train, task_id):
         self.task = {
             0: [0],
-            1: [1],
-            2: [2],
-            3: [3],
-            4: [4],
+            1: [1,2],
+            2: [3,4],
+            3: [6],
+            4: [5],
             5: [5],
             6: [6],
         }

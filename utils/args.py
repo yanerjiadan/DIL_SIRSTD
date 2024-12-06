@@ -19,6 +19,7 @@ def get_args():
     parser.add_argument('--device', type=str, default='cuda', help='number of device')
     parser.add_argument('--mode', type=str, default='train', )
     parser.add_argument('--now_str', type=str, default=None, help='now string')
+    parser.add_argument('--task_list', type=list, default=[1,2,3,4], help='task id list')
     
     args = parser.parse_args()
     

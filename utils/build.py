@@ -31,7 +31,7 @@ def build_dataloader_list(args):
     if args.dataset == 'DIL_SIRSTD':
         train_dataloader_list = []
         test_dataloader_list = []
-        for i in [1,2,5,3,6,4]:
+        for i in args.task_list:
             _dataset = DIL_SIRSTD(is_train=True, task_id=i)
             train_dataloader_list.append(
                 DataLoader(dataset=_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=False))
@@ -43,7 +43,7 @@ def build_dataloader_list(args):
     elif args.dataset == 'DIL_SIRSTD2':
         train_dataloader_list = []
         test_dataloader_list = []
-        for i in [2,1,0]:
+        for i in args.task_list:
             _dataset = DIL_SIRSTD2(is_train=True, task_id=i)
             train_dataloader_list.append(
                 DataLoader(dataset=_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=False))
