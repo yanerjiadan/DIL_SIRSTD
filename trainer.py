@@ -18,6 +18,10 @@ class Trainer:
         self.args = args
         self.mode = self.args.mode
         self.device = torch.device(args.device) if torch.cuda.is_available() else torch.device('cpu')
+        torch.manual_seed(args.seed)
+        np.random.seed(args.seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(args.seed)
         self.model = build_model(model_name=self.args.model_name)
         self.model.apply(weights_init_xavier)
         self.model.to(self.device)
