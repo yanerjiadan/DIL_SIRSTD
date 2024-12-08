@@ -6,4 +6,5 @@ if __name__ == '__main__':
 
     for task_id in range(len(args.task_list)):
         trainer.incremental_train(task_id)
+    for task_id in range(len(args.task_list)):
         trainer.incremental_test(task_id)

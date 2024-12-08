@@ -18,7 +18,7 @@ class Split_SIRSTD(Dataset):
         mean_list = [0.43912969123762524, 0.4184412863421091, 0.44336409581105646, 0.44391380160904076, 0.42093362094996506, 0.39517910423464103, 0.3919024005292877]
         std_list = [0.14216294851289388, 0.14962109511816776, 0.14331847391058938, 0.15104198486175402, 0.14279883526483003, 0.1584699068773762, 0.15488132569796823]
 
-        self.root_dir = '/mnt/e/Dataset/DIL_SIRSTD'
+        self.root_dir = './dataset/DIL_SIRSTD'
         self.image_dir = os.path.join(self.root_dir, 'images')
         self.mask_dir = os.path.join(self.root_dir, 'masks')
         self.image_list = []
@@ -59,6 +59,7 @@ class Split_SIRSTD(Dataset):
             short_size = oh
         img = img.resize((ow, oh), Image.BILINEAR)
         mask = mask.resize((ow, oh), Image.NEAREST)
+        # mask = self.binarize(mask)
         # pad crop
         if short_size < crop_size:
             padh = crop_size - oh if oh < crop_size else 0
@@ -78,11 +79,17 @@ class Split_SIRSTD(Dataset):
         return img, mask
 
     def _testval_sync_transform(self, img, mask):
-        base_size = self.basic_size
-        img = img.resize((base_size, base_size), Image.BILINEAR)
-        mask = mask.resize((base_size, base_size), Image.NEAREST)
+        img = img.resize((self.basic_size, self.basic_size), Image.BILINEAR)
+        mask = mask.resize((self.basic_size, self.basic_size), Image.BILINEAR)
+        mask = self.binarize(mask)
 
         return img, mask
+
+    def binarize(self, img, threshold=127.5):
+        img = np.array(img)
+        img = (img > threshold).astype(np.uint8) * 255
+        img = Image.fromarray(img)
+        return img
 
     def __len__(self):
         return len(self.image_list)
@@ -103,19 +110,10 @@ class Split_SIRSTD(Dataset):
         return img, mask
 
 class DIL_SIRSTD(Dataset):
-    def __init__(self, is_train, task_id):
-        self.task = {
-            0: [0],
-            1: [1,2],
-            2: [3,4],
-            3: [6],
-            4: [5],
-            5: [5],
-            6: [6],
-        }
+    def __init__(self, is_train, sub_task_list):
         self.dataset_list = []
-        for i in self.task[task_id]:
-            self.dataset_list.append(Split_SIRSTD(is_train=is_train, task_id=i))
+        for task_id in sub_task_list:
+            self.dataset_list.append(Split_SIRSTD(is_train=is_train, task_id=task_id))
     def __len__(self):
         l = 0
         for d in self.dataset_list:
@@ -130,10 +128,10 @@ class DIL_SIRSTD(Dataset):
 
 class DIL_SIRSTD2(Dataset):
     def __init__(self, is_train, task_id):
-        nuaa_dir = '/mnt/e/Dataset/NUAA-SIRST'
-        nudt_dir = '/mnt/e/Dataset/NUDT-SIRST'
-        irstd_dir = '/mnt/e/Dataset/IRSTD-1k'
-        target_dir = '/mnt/e/Dataset/DIL_SIRSTD'
+        nuaa_dir = './dataset/NUAA-SIRST'
+        nudt_dir = './dataset/NUDT-SIRST'
+        irstd_dir = './dataset/IRSTD-1k'
+        sirst_dir = './dataset/SIRST-v2'
 
         nuaa_image_dir = os.path.join(nuaa_dir, 'images/images')
         nuaa_mask_dir = os.path.join(nuaa_dir, 'masks/masks')
@@ -141,6 +139,8 @@ class DIL_SIRSTD2(Dataset):
         nudt_mask_dir = os.path.join(nudt_dir, 'masks')
         irstd_image_dir = os.path.join(irstd_dir, 'IRSTD1k_Img')
         irstd_mask_dir = os.path.join(irstd_dir, 'IRSTD1k_Label')
+        sirst_image_dir = os.path.join(sirst_dir, 'mixed')
+        sirst_mask_dir = os.path.join(sirst_dir, 'annotations/masks')
 
         tmp_list = []
         self.img_list = []
@@ -163,7 +163,8 @@ class DIL_SIRSTD2(Dataset):
             for file in files:
                 if file.endswith('.png'):
                     tmp_list.append(file)
-        random.shuffle(tmp_list)
+        for i in range(10):
+            random.shuffle(tmp_list)
 
         if task_id == 0:
             self.img_dir = nuaa_image_dir
@@ -174,6 +175,9 @@ class DIL_SIRSTD2(Dataset):
         elif task_id == 2:
             self.img_dir = irstd_image_dir
             self.mask_dir = irstd_mask_dir
+        elif task_id == 3:
+            self.img_dir = sirst_image_dir
+            self.mask_dir = sirst_mask_dir
 
         if is_train:
             if task_id == 0:
@@ -194,9 +198,16 @@ class DIL_SIRSTD2(Dataset):
                     self.img_list = [line.strip() + '.png' for line in lines]
                     self.mask_list = self.img_list
 
+            elif task_id == 3:
+                txt = os.path.join(sirst_dir, 'splits/trainval_full.txt')
+                with open(txt, 'r') as f:
+                    lines = f.readlines()
+                    self.img_list = [line.strip() + '.png' for line in lines]
+                    self.mask_list = [line.strip() + '_pixels0.png' for line in lines]
+
         else:
             if task_id == 0:
-                txt = os.path.join(nuaa_dir, 'idx_427', 'test.txt')
+                txt = os.path.join(nuaa_dir, 'idx_427', 'test_full.txt')
                 with open(txt, 'r') as f:
                     lines = f.readlines()
                     self.img_list = [line.strip() + '.png' for line in lines]
@@ -212,6 +223,13 @@ class DIL_SIRSTD2(Dataset):
                     lines = f.readlines()
                     self.img_list = [line.strip() + '.png' for line in lines]
                     self.mask_list = self.img_list
+
+            elif task_id == 3:
+                txt = os.path.join(sirst_dir, 'splits/test_full.txt')
+                with open(txt, 'r') as f:
+                    lines = f.readlines()
+                    self.img_list = [line.strip() + '.png' for line in lines]
+                    self.mask_list = [line.strip() + '_pixels0.png' for line in lines]
 
     def _sync_transform(self, img, mask):
         # random mirror
@@ -231,7 +249,8 @@ class DIL_SIRSTD2(Dataset):
             oh = int(1.0 * h * long_size / w + 0.5)
             short_size = oh
         img = img.resize((ow, oh), Image.BILINEAR)
-        mask = mask.resize((ow, oh), Image.NEAREST)
+        mask = mask.resize((ow, oh), Image.BILINEAR)
+        mask = self.binarize(mask)
         # pad crop
         if short_size < crop_size:
             padh = crop_size - oh if oh < crop_size else 0
@@ -251,11 +270,17 @@ class DIL_SIRSTD2(Dataset):
         return img, mask
 
     def _testval_sync_transform(self, img, mask):
-        base_size = self.basic_size
-        img = img.resize((base_size, base_size), Image.BILINEAR)
-        mask = mask.resize((base_size, base_size), Image.NEAREST)
+        img = img.resize((self.basic_size, self.basic_size), Image.BILINEAR)
+        mask = mask.resize((self.basic_size, self.basic_size), Image.NEAREST)
+        # mask = self.binarize(mask)
 
         return img, mask
+
+    def binarize(self, img, threshold=127.5):
+        img = np.array(img)
+        img = (img > threshold).astype(np.uint8) * 255
+        img = Image.fromarray(img)
+        return img
 
     def __len__(self):
         return len(self.img_list)
@@ -286,11 +311,6 @@ class DIL_SIRSTD2(Dataset):
 if __name__ == '__main__':
     train_dataset_list = []
     test_dataset_list = []
-    # for i, task in enumerate('01234'):
-    #     train_dataset_list.append(DIL_SIRSTD(is_train=True, task_id=task))
-    #     test_dataset_list.append(DIL_SIRSTD(is_train=False, task_id=task))
-    #     print(f'task_id:{i},   train_len:{train_dataset_list[i].__len__()},   test_len:{test_dataset_list[i].__len__()}')
-
     for i in range(3):
         train_dataset_list.append(DIL_SIRSTD2(is_train=True, task_id=i))
         test_dataset_list.append(DIL_SIRSTD2(is_train=False, task_id=i))

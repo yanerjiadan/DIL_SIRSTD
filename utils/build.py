@@ -31,25 +31,25 @@ def build_dataloader_list(args):
     if args.dataset == 'DIL_SIRSTD':
         train_dataloader_list = []
         test_dataloader_list = []
-        for i in args.task_list:
-            _dataset = DIL_SIRSTD(is_train=True, task_id=i)
+        for sub_task_list in args.task_list:
+            _dataset = DIL_SIRSTD(is_train=True, sub_task_list=sub_task_list)
             train_dataloader_list.append(
-                DataLoader(dataset=_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=False))
-            _dataset = DIL_SIRSTD(is_train=False, task_id=i)
+                DataLoader(dataset=_dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=4, drop_last=False))
+            _dataset = DIL_SIRSTD(is_train=False, sub_task_list=sub_task_list)
             test_dataloader_list.append(
-                DataLoader(dataset=_dataset, batch_size=1, shuffle=False, num_workers=4, drop_last=False))
+                DataLoader(dataset=_dataset, batch_size=args.test_batch_size, shuffle=False, num_workers=4, drop_last=False))
         return train_dataloader_list, test_dataloader_list
     
     elif args.dataset == 'DIL_SIRSTD2':
         train_dataloader_list = []
         test_dataloader_list = []
-        for i in args.task_list:
-            _dataset = DIL_SIRSTD2(is_train=True, task_id=i)
+        for sub_task_list in args.task_list:
+            _dataset = DIL_SIRSTD2(is_train=True, task_id=sub_task_list)
             train_dataloader_list.append(
-                DataLoader(dataset=_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=False))
-            _dataset = DIL_SIRSTD2(is_train=False, task_id=i)
+                DataLoader(dataset=_dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=4, drop_last=False))
+            _dataset = DIL_SIRSTD2(is_train=False, task_id=sub_task_list)
             test_dataloader_list.append(
-                DataLoader(dataset=_dataset, batch_size=1, shuffle=False, num_workers=4, drop_last=False))
+                DataLoader(dataset=_dataset, batch_size=args.test_batch_size, shuffle=False, num_workers=4, drop_last=False))
         return train_dataloader_list, test_dataloader_list
 
 def build_optimizer(model, args):

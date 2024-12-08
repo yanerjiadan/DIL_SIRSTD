@@ -1,3 +1,5 @@
+import os
+
 import  numpy as np
 import torch
 from skimage import measure
@@ -209,7 +211,7 @@ def batch_intersection_union(output, target, nclass):
 def weights_init_xavier(m):
     classname = m.__class__.__name__
     if classname.find('Conv2d') != -1:
-        torch.nn.init.xavier_normal(m.weight.data)
+        torch.nn.init.xavier_normal_(m.weight.data)
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -228,3 +230,7 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+def save_model(mean_IoU, best_IoU, task_id, args, model:torch.nn.Module):
+    save_dir = os.path.join(args.ckpt_dir, f'ckpt_best_miou_task_{task_id}.pt')
+    torch.save(model.state_dict(), save_dir)

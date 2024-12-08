@@ -74,6 +74,7 @@ class MSHNet(nn.Module):
     def __init__(self, input_channels, block=ResNet):
         super().__init__()
         param_channels = [16, 32, 64, 128, 256]
+        # param_channels = [64, 32, 128, 256, 512]
         param_blocks = [2, 2, 2, 2]
         self.pool = nn.MaxPool2d(2, 2)
         self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
